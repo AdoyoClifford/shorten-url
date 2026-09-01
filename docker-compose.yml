@@ -1,0 +1,19 @@
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:2.5.2
+    container_name: shortenurl-dynamodb
+    ports:
+      - "8000:8000"
+    # -sharedDb keeps every credential/region pair pointed at ONE database file.
+    # Without it DynamoDB Local silos data per access-key, and the AWS CLI (which
+    # picks up your real credentials) sees a different, empty database than the app.
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/data"]
+    working_dir: /home/dynamodblocal
+    user: root
+    volumes:
+      - ./.dynamodb-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8000 && echo -e 'GET / HTTP/1.1\\n\\n' >&3"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
