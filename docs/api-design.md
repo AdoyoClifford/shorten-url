@@ -64,12 +64,19 @@ Content-Type: application/json
 `201 Created`, `Location: https://sho.rt/launch-2026`, body = the link resource.
 
 Rules:
-- `url` — required. `http`/`https` only, ≤ 2048 chars, must parse, must have a public host.
-  Rejected: `localhost`, `127.0.0.0/8`, RFC1918, link-local, `.internal`. **Note:** while developing locally the
-  localhost rule has to be relaxed or nothing is testable — make it a config flag
-  (`app.allow-private-targets`, default `false`, `true` only in the `local` profile), not an
-  `if (dev)` branch in the validator.
-- `alias` — optional, `^[a-z0-9][a-z0-9_-]{2,31}$` (lowercase only, §5). `409` if taken.
+- `url` — required and non-blank. **Nothing else is checked in v1** — no scheme allowlist, no
+  length cap, no private-host rules. Whatever is sent is what gets stored and redirected to.
+
+  Deferred rather than forgotten. What the checks were for, in the order they are worth adding
+  back:
+  1. **A 2048-char cap.** The one with an operational reason: a DynamoDB item is capped at 400 KB,
+     so a pathological URL fails the write with an SDK error instead of a clean `400`.
+  2. **`http`/`https` only.** Blocks `javascript:` and `data:` targets. Browsers already refuse to
+     follow those from a `Location` header, so this is defence in depth rather than a live hole.
+  3. **Public-host rules** (`localhost`, RFC1918, link-local, `.internal`). Never an SSRF control —
+     the service redirects users to targets, it never fetches them — so this is about link quality
+     and abuse, and it is the least urgent of the three.
+- `alias` — optional, and **unvalidated in v1** beyond being non-blank (§5). `409` if taken.
 - `expiresAt` and `ttlSeconds` are mutually exclusive; both is `400`. `expiresAt` must be in the
   future. **Absent = 30 days from now** (`app.default-ttl-days`). There is no "never expires" —
   §4.
@@ -80,6 +87,7 @@ Errors: `400` (validation) · `409` (alias taken) · `413` · `429`.
 **Shortening a short link is allowed**, and the target is **flattened at create time**: if `url`
 points at our own domain and resolves to a known code, the new link stores that code's *target*,
 not the short URL. So `sho.rt/B → sho.rt/A → example.com` is stored as `sho.rt/B → example.com`.
+Recognising one of our own URLs is the only URL parsing v1 does.
 
 Flattening rather than chaining is what makes this safe: a stored chain can cycle (`A → B → A`),
 which browsers only stop by giving up after ~20 hops, and every extra hop is another lookup on the
@@ -294,13 +302,19 @@ Codes are drawn from a **CSPRNG, not a counter**. Sequential codes let anyone wa
 table — with no auth in v1, that is the difference between a private link and a public directory.
 Insert with a bounded retry (~3 attempts) on collision.
 
-**Custom aliases:** lowercase only. Mixed case invites look-alike squatting (`Launch-2026` vs
-`launch-2026`) and users mistype case in hand-typed links. Generated codes stay case-sensitive
-because that is where the keyspace comes from.
+**Custom aliases: taken as given in v1.** No format rule, no case rule, no reserved list — the
+alias is whatever the caller sends. Uniqueness is still absolute, because it comes from the
+conditional put (§8.2) rather than from any validation.
 
-**Reserved** (rejected as aliases, `400`): `api`, `admin`, `actuator`, `health`, `metrics`, `login`,
-`logout`, `signup`, `static`, `assets`, `docs`, `robots.txt`, `favicon.ico`, `sitemap.xml`,
-`.well-known`, plus a profanity/impersonation denylist. Config, not code.
+Two things this lets through, both of which produce a link that is stored but does not work:
+
+- **An alias containing `/`, whitespace or `#`.** `GET /{code}` matches a single path segment, so
+  `my/alias` can be created and can never be resolved.
+- **An alias that shadows a real route.** Anything mapped more specifically wins — `/api/v1/links`
+  and `/actuator/health` are routes before they are codes.
+
+Neither corrupts data; both make a link that silently 404s. The fix, when it is worth it, is a
+format rule plus a reserved list in config — see the git history for the version that had one.
 
 ---
 
@@ -466,7 +480,6 @@ takes several — that difference is felt on every test run.
 
 ```
 app.base-url=http://localhost:8080
-app.allow-private-targets=true          # local profile only, see §2.1
 aws.dynamodb.endpoint=http://localhost:8000
 aws.region=us-east-1                    # DynamoDB Local ignores it; the SDK requires it
 ```
@@ -531,7 +544,6 @@ curl 'http://localhost:8080/api/v1/links/launch-2026/stats?from=2026-08-01&to=20
 | `app.code-length` | `7` | 5 |
 | `app.code-alphabet` | base58 | 5 |
 | `app.default-ttl-days` | `30` | 4 |
-| `app.allow-private-targets` | `false` (`true` in `local`) | 2.1 |
 | `app.reserved-codes` | see §5 | 5 |
 | `app.list-shards` | `10` | 8.1 |
 | `app.analytics.flush-interval` | `2s` | 7.1 |

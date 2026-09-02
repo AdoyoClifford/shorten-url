@@ -2,7 +2,6 @@ package org.adoyo.shortenurl.config;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Set;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -29,14 +28,8 @@ public record AppProperties(
         /** Shard count for the all-links-index partition key (api-design.md 8.1). */
         @DefaultValue("10") int listShards,
 
-        /** Allow shortening links to localhost / private ranges. Local dev only. */
-        @DefaultValue("false") boolean allowPrivateTargets,
-
         /** Create missing tables at startup. Local dev only - real envs use IaC. */
         @DefaultValue("false") boolean bootstrapTables,
-
-        /** Codes that can never be claimed as a custom alias, because they are real routes. */
-        @DefaultValue("") Set<String> reservedCodes,
 
         @DefaultValue Tables tables,
 
