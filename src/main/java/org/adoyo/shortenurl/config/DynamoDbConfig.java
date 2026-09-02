@@ -2,6 +2,7 @@ package org.adoyo.shortenurl.config;
 
 import java.net.URI;
 
+import org.adoyo.shortenurl.persistence.LinkRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -41,6 +42,11 @@ public class DynamoDbConfig {
         }
 
         return builder.build();
+    }
+
+    @Bean
+    LinkRepository linkRepository(DynamoDbClient client, AppProperties app) {
+        return new LinkRepository(client, app.tables().links(), app.listShards());
     }
 
     @Bean
