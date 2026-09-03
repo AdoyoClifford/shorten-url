@@ -4,7 +4,8 @@ Status: draft for implementation. Base URL in examples: `https://sho.rt`
 (locally: `http://localhost:8080`).
 
 **v1 decisions:** DynamoDB · no auth · click analytics in scope · 7-char base58 codes · runs
-locally first · every link expires · duplicates are fine · clicks stream through Kafka.
+locally first · every link expires · duplicates are fine · clicks stream through Kafka · no target
+validation · plain JSON errors.
 
 Two surfaces, deliberately separated:
 
@@ -210,28 +211,16 @@ clicks are omitted from `daily` rather than zero-filled; the client renders the 
 
 No `401`/`403` in v1 — they arrive with auth (§6).
 
-Errors use RFC 9457 `application/problem+json`:
+Errors are plain JSON — one string, with the status code carrying the meaning:
 
 ```json
-{
-  "type": "https://sho.rt/problems/alias-taken",
-  "title": "Alias already in use",
-  "status": 409,
-  "detail": "The alias 'launch-2026' is already taken.",
-  "instance": "/api/v1/links"
-}
+{ "error": "alias is already taken: launch-2026" }
 ```
 
-With field-level detail on validation failures:
-
-```json
-{
-  "type": "https://sho.rt/problems/validation",
-  "title": "Request validation failed",
-  "status": 400,
-  "errors": [ { "field": "url", "message": "must be http or https" } ]
-}
-```
+RFC 9457 `application/problem+json` was the v1 plan and is deferred. It buys machine-readable
+`type` URIs and per-field validation detail, which matter once a client has to *branch* on the
+failure rather than show it. Spring's `ProblemDetail` makes the switch small when that day comes;
+until then the status code plus a sentence is what a human debugging with curl actually reads.
 
 ---
 
