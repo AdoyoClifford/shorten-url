@@ -28,6 +28,9 @@ public record AppProperties(
         /** Shard count for the all-links-index partition key (api-design.md 8.1). */
         @DefaultValue("10") int listShards,
 
+        /** How many times to redraw a generated code before giving up (api-design.md 5). */
+        @DefaultValue("3") int maxCodeAttempts,
+
         /** Create missing tables at startup. Local dev only - real envs use IaC. */
         @DefaultValue("false") boolean bootstrapTables,
 

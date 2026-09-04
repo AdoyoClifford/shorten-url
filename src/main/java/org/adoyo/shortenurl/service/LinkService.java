@@ -3,6 +3,7 @@ package org.adoyo.shortenurl.service;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.adoyo.shortenurl.domain.Link;
@@ -34,6 +35,11 @@ public class LinkService {
         this.clock = clock;
         this.defaultTtl = defaultTtl;
         this.maxCodeAttempts = maxCodeAttempts;
+    }
+
+    /** The link behind a code, whatever state it is in. The caller decides what that means. */
+    public Optional<Link> find(String code) {
+        return repository.findByCode(code);
     }
 
     public Link create(CreateLinkCommand command) {

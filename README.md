@@ -55,6 +55,17 @@ To start from scratch, `docker compose down` and delete `./.dynamodb-data`.
 | `src/main/.../config/DynamoDbConfig.java` | one switch between DynamoDB Local and real AWS |
 | `src/main/.../config/TableBootstrap.java` | creates the tables from design doc §8 |
 
+## Try it
+
+```bash
+curl -X POST http://localhost:8080/api/v1/links \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"https://example.com/a/very/long/path"}'
+
+curl -i http://localhost:8080/<code>
+```
+
 ## What is not built yet
 
-The API surface itself — `POST /api/v1/links`, the `/{code}` redirect, stats. Next up.
+Inspect, renew and delete (`GET`/`PATCH`/`DELETE /api/v1/links/{code}`), the list endpoint, click
+analytics and the stats endpoint, and rate limiting. See [docs/api-design.md](docs/api-design.md).
