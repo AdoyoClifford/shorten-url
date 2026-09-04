@@ -38,3 +38,6 @@ out/
 
 ### Local DynamoDB data ###
 .dynamodb-data/
+
+### graphify ###
+graphify-out/
