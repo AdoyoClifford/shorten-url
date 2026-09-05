@@ -67,5 +67,5 @@ curl -i http://localhost:8080/<code>
 
 ## What is not built yet
 
-Inspect, renew and delete (`GET`/`PATCH`/`DELETE /api/v1/links/{code}`), the list endpoint, click
-analytics and the stats endpoint, and rate limiting. See [docs/api-design.md](docs/api-design.md).
+The list endpoint, click analytics and the stats endpoint, and rate limiting.
+See [docs/api-design.md](docs/api-design.md).

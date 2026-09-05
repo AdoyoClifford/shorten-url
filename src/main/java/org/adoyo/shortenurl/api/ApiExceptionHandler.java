@@ -1,6 +1,7 @@
 package org.adoyo.shortenurl.api;
 
 import org.adoyo.shortenurl.service.CodeTakenException;
+import org.adoyo.shortenurl.service.LinkNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
+    @ExceptionHandler(LinkNotFoundException.class)
+    ResponseEntity<ErrorResponse> notFound(LinkNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ex.getMessage()));
+    }
 
     @ExceptionHandler(CodeTakenException.class)
     ResponseEntity<ErrorResponse> codeTaken(CodeTakenException ex) {
