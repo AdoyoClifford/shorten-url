@@ -71,6 +71,45 @@ public class LinkService {
                 "could not generate an unused code in " + maxCodeAttempts + " attempts");
     }
 
+    /**
+     * Moves the expiry out, reviving the link if it had expired or been deleted
+     * (api-design.md 2.4). Same code, same target, same click history.
+     */
+    public Link renew(String code, Instant expiresAt) {
+        if (expiresAt == null) {
+            throw new IllegalArgumentException("expiresAt is required");
+        }
+        if (!expiresAt.isAfter(clock.instant())) {
+            throw new IllegalArgumentException("expiresAt must be in the future");
+        }
+
+        Link renewed = require(code).renewedUntil(expiresAt);
+        if (!repository.replace(renewed)) {
+            // Raced with a hard delete. Impossible today - nothing hard-deletes - but swallowing
+            // it would turn a lost update into a silent success.
+            throw new LinkNotFoundException(code);
+        }
+        return renewed;
+    }
+
+    /** Soft delete (api-design.md 2.5). Idempotent: the original deletedAt is never rewritten. */
+    public Link delete(String code) {
+        Link link = require(code);
+        if (link.deletedAt() != null) {
+            return link;
+        }
+
+        Link deleted = link.asDeleted(clock.instant());
+        if (!repository.replace(deleted)) {
+            throw new LinkNotFoundException(code);
+        }
+        return deleted;
+    }
+
+    private Link require(String code) {
+        return repository.findByCode(code).orElseThrow(() -> new LinkNotFoundException(code));
+    }
+
     private Instant expiryFor(CreateLinkCommand command, Instant now) {
         if (command.expiresAt() != null && command.ttlSeconds() != null) {
             throw new IllegalArgumentException("expiresAt and ttlSeconds are mutually exclusive");
